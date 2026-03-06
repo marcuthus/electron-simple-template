@@ -1,8 +1,8 @@
 import { BrowserWindow, Menu, app, type MenuItemConstructorOptions } from "electron"
-
 import path from "node:path"
 
 import { appRootDir, distDir, vitePublicDir, __dirname } from "./helpers/constants.helper"
+import { registerCommonHandlers } from "./handlers/common.handler"
 
 process.env.APP_ROOT = appRootDir
 process.env.DIST = distDir
@@ -88,5 +88,7 @@ app.on("activate", () => {
 })
 
 app.whenReady().then(() => {
+    registerCommonHandlers()
+    registerCommonHandlers()
     createWindow()
 })
