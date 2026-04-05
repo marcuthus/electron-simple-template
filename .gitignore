@@ -1,6 +1,5 @@
 dist-electron
 .env
-AGENTS.md
 
 # Logs
 logs

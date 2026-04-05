@@ -1,0 +1,1 @@
+Instruções em AGENTS.md
