@@ -1,20 +1,39 @@
-import { contextBridge, ipcRenderer } from "electron"
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron"
+
+import {
+    allowedInvokeChannels,
+    allowedReceiveChannels,
+    allowedSendChannels,
+    isAllowedChannel,
+} from "./helpers/ipc-channels.helper"
+
+type Listener = (event: IpcRendererEvent, ...args: unknown[]) => void
+
+const assertAllowed = (channels: readonly string[], channel: unknown) => {
+    if (!isAllowedChannel(channels, channel)) {
+        throw new Error(`Canal IPC não permitido: ${String(channel)}`)
+    }
+}
 
 contextBridge.exposeInMainWorld("ipcRenderer", {
-    on(...args: Parameters<typeof ipcRenderer.on>) {
-        const [channel, listener] = args
-        return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
+    // Retorna uma função para cancelar a inscrição (o listener original não pode ser removido
+    // depois de embrulhado, então o antigo "off" nunca funcionava).
+    on(channel: string, listener: Listener) {
+        assertAllowed(allowedReceiveChannels, channel)
+
+        const wrapped = (event: IpcRendererEvent, ...args: unknown[]) => listener(event, ...args)
+        ipcRenderer.on(channel, wrapped)
+
+        return () => {
+            ipcRenderer.off(channel, wrapped)
+        }
     },
-    off(...args: Parameters<typeof ipcRenderer.off>) {
-        const [channel, ...rest] = args
-        return ipcRenderer.off(channel, ...rest)
+    send(channel: string, ...args: unknown[]) {
+        assertAllowed(allowedSendChannels, channel)
+        return ipcRenderer.send(channel, ...args)
     },
-    send(...args: Parameters<typeof ipcRenderer.send>) {
-        const [channel, ...rest] = args
-        return ipcRenderer.send(channel, ...rest)
-    },
-    invoke(...args: Parameters<typeof ipcRenderer.invoke>) {
-        const [channel, ...rest] = args
-        return ipcRenderer.invoke(channel, ...rest)
+    invoke(channel: string, ...args: unknown[]) {
+        assertAllowed(allowedInvokeChannels, channel)
+        return ipcRenderer.invoke(channel, ...args)
     },
 })

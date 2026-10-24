@@ -8,7 +8,10 @@ const mockStore = {
 }
 
 vi.mock("electron-store", () => ({
-    default: vi.fn(() => mockStore),
+    // vitest 4 exige function/class para mocks chamados com "new"
+    default: vi.fn(function () {
+        return mockStore
+    }),
 }))
 
 describe("settings", () => {

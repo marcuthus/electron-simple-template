@@ -1,8 +1,10 @@
-import { BrowserWindow, Menu, app, type MenuItemConstructorOptions } from "electron"
+import { BrowserWindow, Menu, app, shell, type MenuItemConstructorOptions } from "electron"
+
 import path from "node:path"
 
 import { appRootDir, distDir, vitePublicDir, __dirname } from "./helpers/constants.helper"
-import { registerCommonHandlers } from "./handlers/common.handler"
+import { isSafeExternalUrl, registerCommonHandlers } from "./handlers/common.handler"
+import { registerSettingsHandlers } from "./handlers/settings.handler"
 
 process.env.APP_ROOT = appRootDir
 process.env.DIST = distDir
@@ -15,7 +17,30 @@ const createWindow = () => {
         icon: path.join(vitePublicDir, "logo.png"),
         webPreferences: {
             preload: path.join(__dirname, "preload.mjs"),
+            // Explícito para não depender de padrões que mudaram entre versões do Electron
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: true,
         },
+    })
+
+    // Links com target="_blank"/window.open abrem no navegador do sistema (só protocolos seguros)
+    // em vez de criar uma nova janela com acesso ao preload.
+    win.webContents.setWindowOpenHandler(({ url }) => {
+        if (isSafeExternalUrl(url)) {
+            shell.openExternal(url)
+        }
+
+        return { action: "deny" }
+    })
+
+    // Impede que a janela navegue para fora do app (ex.: via link injetado).
+    win.webContents.on("will-navigate", (event, url) => {
+        const appUrl = process.env.VITE_DEV_SERVER_URL
+
+        if (appUrl ? url.startsWith(appUrl) : url.startsWith("file://")) return
+
+        event.preventDefault()
     })
 
     win.webContents.on("did-finish-load", () => {
@@ -88,7 +113,9 @@ app.on("activate", () => {
 })
 
 app.whenReady().then(() => {
+    // Estava registrado duas vezes: o segundo ipcMain.handle lança "second handler" e o app não abria
     registerCommonHandlers()
-    registerCommonHandlers()
+    // theme.provider usa settings:get/update, que nunca eram registrados
+    registerSettingsHandlers()
     createWindow()
 })

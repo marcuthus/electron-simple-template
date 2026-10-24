@@ -34,4 +34,13 @@ describe("Common Handlers", () => {
 
         expect(shell.openExternal).toHaveBeenCalledWith("https://example.com")
     })
+
+    it("should reject unsafe urls", async () => {
+        const handler = getHandler("shell:open-external")
+
+        await expect(handler({}, "file:///C:/Windows/System32/calc.exe")).rejects.toThrow()
+        await expect(handler({}, "javascript:alert(1)")).rejects.toThrow()
+        await expect(handler({}, "not a url")).rejects.toThrow()
+        expect(shell.openExternal).not.toHaveBeenCalled()
+    })
 })

@@ -2,6 +2,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import type { IpcMainInvokeEvent } from "electron"
 import { ipcMain } from "electron"
+
 import bcrypt from "bcryptjs"
 
 import { registerUserHandlers } from "./user.handler"
